@@ -52,3 +52,11 @@ def test_database_url_optional():
     settings = Settings()
     # Should not raise; DATABASE_URL is None when not provided
     assert settings.DATABASE_URL is None or isinstance(settings.DATABASE_URL, str)
+
+
+def test_self_ping_config():
+    """Verify self-ping settings and defaults."""
+    settings = Settings()
+    assert settings.SELF_PING_ENABLED is True
+    assert settings.SELF_PING_INTERVAL_SECONDS == 180
+    assert settings.SELF_PING_URL is None

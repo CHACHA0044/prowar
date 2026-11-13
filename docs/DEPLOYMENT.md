@@ -45,10 +45,18 @@ This document provides the exact deployment settings and operational guide for t
 | `ALLOWED_ORIGINS` | **Yes** | `https://prowar-rho.vercel.app` | Explicit CORS allowlist for Vercel production frontend |
 | `DEBUG` | Optional | `False` | Disables debug mode and verbose tracebacks |
 | `LOG_LEVEL` | Optional | `INFO` | Standard application logging level |
+| `SELF_PING_ENABLED` | Optional | `True` | Runs periodic self-ping to reduce free-tier spin-down |
+| `SELF_PING_INTERVAL_SECONDS` | Optional | `180` | Interval between self-ping requests (3 minutes) |
+| `SELF_PING_URL` | Optional | Unset | Explicit health URL override (defaults to `RENDER_EXTERNAL_URL/api/v1/health/live`) |
 | `CONTROL_API_TOKEN` | Optional | `<random-secret-token>` | Protects simulator mutation endpoints (`/start`, `/pause`, `/reset`, `/speed`) via `X-Control-Token` header |
 | `DATASET_PATH` | Optional | Unset | Auto-discovered at `../data/transactions.csv` |
 
 *(Note: `DATABASE_URL` is **not** required. The application starts and serves all APIs without any database).*
+
+> [!NOTE]
+> **Render Free-Tier Keepalive & Disclaimer:**<br>
+> The backend runs a lightweight, non-blocking self-ping worker every 3 minutes that makes a `GET` request to its `/api/v1/health/live` endpoint and executes a minor randomized CPU computation (500–1500 float additions in <1ms) to demonstrate container activity.<br>
+> **Important Disclaimer:** Automated self-pings help mitigate idle spin-down but do **not** guarantee prevention of Render's free-tier sleep or override Render's platform inactivity and suspension policies.
 
 ---
 

@@ -44,6 +44,13 @@ class Settings(BaseSettings):
     # Optional legacy database URL (ignored in static CSV architecture)
     DATABASE_URL: Optional[str] = None
 
+    # Render free-tier keepalive self-ping configuration
+    # Note: Automated pings do not guarantee prevention of Render's free-tier sleep or override its inactivity policies.
+    SELF_PING_ENABLED: bool = True
+    SELF_PING_INTERVAL_SECONDS: int = 180  # 3 minutes default
+    SELF_PING_URL: Optional[str] = None
+    RENDER_EXTERNAL_URL: Optional[str] = None  # Render auto-populates this on Web Services
+
     @field_validator("ALLOWED_ORIGINS", mode="before")
     @classmethod
     def _normalize_origins_input(cls, value):

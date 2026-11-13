@@ -20,6 +20,7 @@ from app.core.exceptions import (
 )
 from app.core.logging import logger
 from app.services.dataset_service import dataset_service
+from app.services.self_ping import self_ping_service
 from app.services.simulator import simulator_service
 
 
@@ -41,9 +42,13 @@ async def lifespan(app: FastAPI):
     # Initialize simulator
     await simulator_service.initialize()
 
+    # Start lightweight self-ping keepalive worker (runs only if enabled and non-testing)
+    await self_ping_service.start()
+
     yield
 
     logger.info("Shutting down application resources.")
+    await self_ping_service.stop()
     await simulator_service.shutdown()
 
 

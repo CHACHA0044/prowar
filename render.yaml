@@ -23,5 +23,9 @@ services:
         value: INFO
       - key: ALLOWED_ORIGINS
         value: https://prowar-rho.vercel.app
+      - key: SELF_PING_ENABLED
+        value: "True"
+      - key: SELF_PING_INTERVAL_SECONDS
+        value: "180"
       - key: CONTROL_API_TOKEN
         sync: false
