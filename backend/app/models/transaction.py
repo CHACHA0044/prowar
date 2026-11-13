@@ -38,4 +38,6 @@ class Transaction(Base):
         Index("ix_tx_sender_timestamp", "sender_account_id", "timestamp"),
         Index("ix_tx_receiver_timestamp", "receiver_account_id", "timestamp"),
         Index("ix_tx_channel_category", "channel", "merchant_category"),
+        # Deterministic chronological replay ordering used by the simulator.
+        Index("ix_tx_replay_order", "timestamp", "transaction_id"),
     )

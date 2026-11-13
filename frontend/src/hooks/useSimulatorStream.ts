@@ -22,7 +22,15 @@ export function useSimulatorStream() {
     if (esRef.current) {
       esRef.current.close();
     }
-    const es = new EventSource(simulatorService.getStreamUrl());
+    let streamUrl: string;
+    try {
+      streamUrl = simulatorService.getStreamUrl();
+    } catch (err) {
+      setIsConnected(false);
+      setError(err instanceof Error ? err.message : "Backend URL is not configured.");
+      return;
+    }
+    const es = new EventSource(streamUrl);
     esRef.current = es;
 
     es.onopen = () => {

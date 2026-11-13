@@ -3,14 +3,43 @@ Health check endpoints.
 Provides real-time system and database health status.
 """
 
-from fastapi import APIRouter, Depends, status
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, HTTPException, status
 from app.core.config import settings
-from app.database.session import check_db_health, get_db
+from app.database.session import check_db_health
 from app.schemas.health import SystemHealthResponse, DatabaseHealthResponse, ComponentHealth
 from app.utils.timestamps import utc_now
 
 router = APIRouter(prefix="/health", tags=["Health & Diagnostics"])
+
+
+@router.get(
+    "/live",
+    status_code=status.HTTP_200_OK,
+    summary="Liveness Probe",
+    description="Cheap process liveness check. Does not touch the database.",
+)
+def get_liveness() -> dict:
+    return {"status": "alive", "environment": settings.ENVIRONMENT}
+
+
+@router.get(
+    "/ready",
+    status_code=status.HTTP_200_OK,
+    summary="Readiness Probe",
+    description="Returns 200 only when the API can reach its database. Used by Render.",
+)
+def get_readiness() -> dict:
+    db_health = check_db_health()
+    if not db_health.get("connected"):
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database is not reachable.",
+        )
+    return {
+        "status": "ready",
+        "database": db_health.get("dialect"),
+        "environment": settings.ENVIRONMENT,
+    }
 
 
 @router.get(

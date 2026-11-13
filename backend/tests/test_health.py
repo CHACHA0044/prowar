@@ -33,3 +33,15 @@ def test_database_health_endpoint(client: TestClient):
     assert data["status"] == "healthy"
     assert "dialect" in data
 
+
+def test_liveness_endpoint(client: TestClient):
+    response = client.get("/api/v1/health/live")
+    assert response.status_code == 200
+    assert response.json()["status"] == "alive"
+
+
+def test_readiness_endpoint(client: TestClient):
+    response = client.get("/api/v1/health/ready")
+    assert response.status_code == 200
+    assert response.json()["status"] == "ready"
+

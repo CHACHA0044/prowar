@@ -121,6 +121,43 @@ promwar/
 
 ---
 
+## 3. Deployment Architecture
+
+Sentinel.AML is production‑ready with the following deployment configuration:
+
+- **Frontend:** Vercel (Next.js) – Live at `https://prowar-rho.vercel.app`
+- **Backend:** Render (FastAPI) – Repository: `CHACHA0044/prowar`, Runtime: Python 3.12
+- **Database:** Supabase PostgreSQL (managed) – Session pooler recommended for Render IPv4 compatibility
+
+### Vercel Configuration
+- Repository: `CHACHA0044/prowar`
+- Root directory: `frontend/`
+- Build command: `next build`
+- Start command: `next start --port 3000`
+- Required environment variable: `NEXT_PUBLIC_API_URL` (Render backend URL)
+
+### Render Configuration
+- Repository: `CHACHA0044/prowar`
+- Root directory: `backend/`
+- Build command: `pip install --upgrade pip && pip install -r requirements.txt`
+- Start command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1 --proxy-headers --forwarded-allow-ips="*"`
+- Required environment variables: `DATABASE_URL` (Supabase), `CONTROL_API_TOKEN` (optional)
+
+### Database Migration & Dataset Import
+- Alembic migrations are pre‑configured (`backend/alembic/`); run `alembic upgrade head` in production.
+- Dataset import via CLI: `python -m app.cli import-dataset --file ../data/transactions.csv`
+- All 129,675 synthetic transactions are imported with ground‑truth labels preserved.
+
+### Security & CORS
+- Production CORS: Explicit origins only (`https://prowar-rho.vercel.app`)
+- No wildcard origins in production.
+- Optional token (`CONTROL_API_TOKEN`) for simulator control mutations.
+
+### Monitoring
+- Vercel Analytics & Speed Insights integrated in `frontend/src/app/layout.tsx`.
+
+---
+
 ## 4. Quickstart Guide
 
 ### Prerequisites

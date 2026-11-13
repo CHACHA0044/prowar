@@ -2,7 +2,11 @@
 .env
 .env.local
 .env.*.local
+.env.development
+.env.production
+.env.test
 *.env
+!.env.example
 
 # Python
 __pycache__/
@@ -28,6 +32,7 @@ wheels/
 *.egg
 .pytest_cache/
 .coverage
+coverage.xml
 htmlcov/
 .mypy_cache/
 .ruff_cache/
@@ -35,10 +40,14 @@ htmlcov/
 venv/
 ENV/
 
-# Databases
+# Databases — never commit local SQLite files or dumps
 *.db
 *.sqlite
 *.sqlite3
+*.dump
+*.sql.gz
+*.backup
+alembic_bootstrap.db
 
 # Node / Frontend
 node_modules/
@@ -47,6 +56,10 @@ out/
 .npm/
 *.tsbuildinfo
 next-env.d.ts
+.vercel/
+
+# Supabase CLI local state
+.supabase/
 
 # IDE / OS
 .vscode/
@@ -58,4 +71,3 @@ Thumbs.db
 # Sensitive datasets
 data/real/
 data/raw_confidential/
-

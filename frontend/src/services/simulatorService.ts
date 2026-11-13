@@ -1,7 +1,6 @@
 import { apiFetch } from "./apiClient";
 import { SimulatorStatus } from "@/types/simulator";
-
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+import { getApiBaseUrl } from "@/lib/api-client";
 
 export const simulatorService = {
   getStatus: () => apiFetch<SimulatorStatus>("/api/v1/simulator/status"),
@@ -13,5 +12,5 @@ export const simulatorService = {
       method: "PATCH",
       body: JSON.stringify({ speed }),
     }),
-  getStreamUrl: () => `${BASE_URL}/api/v1/simulator/stream`,
+  getStreamUrl: () => `${getApiBaseUrl()}/api/v1/simulator/stream`,
 };

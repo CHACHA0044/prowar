@@ -1,6 +1,10 @@
 /**
- * Centralized API Client.
- * Handles environment-based backend base URL, timeouts, and structured error responses.
+ * Centralized API client.
+ *
+ * The backend base URL is read exclusively from NEXT_PUBLIC_API_URL. In
+ * development it falls back to the local FastAPI server; in production a
+ * missing variable produces a clear error instead of silently calling
+ * localhost from the browser.
  */
 
 export interface ApiResponse<T> {
@@ -15,16 +19,33 @@ export interface ApiError {
   details?: Record<string, unknown>;
 }
 
-class ApiClient {
-  private baseUrl: string;
+const DEV_FALLBACK = "http://127.0.0.1:8000";
+const REQUEST_TIMEOUT_MS = 30_000;
 
-  constructor() {
-    this.baseUrl =
-      process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "http://127.0.0.1:8000";
+export function getApiBaseUrl(): string {
+  const configured = process.env.NEXT_PUBLIC_API_URL?.trim();
+  if (configured) {
+    return configured.replace(/\/+$/, "");
   }
+  if (process.env.NODE_ENV === "production") {
+    return "";
+  }
+  return DEV_FALLBACK;
+}
 
+export function buildApiUrl(path: string): string {
+  const baseUrl = getApiBaseUrl();
+  if (!baseUrl) {
+    throw new Error(
+      "NEXT_PUBLIC_API_URL is not configured. Set it to the Render backend URL in Vercel."
+    );
+  }
+  return `${baseUrl}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
+class ApiClient {
   public getBaseUrl(): string {
-    return this.baseUrl;
+    return getApiBaseUrl();
   }
 
   async get<T>(endpoint: string, options?: RequestInit): Promise<T> {
@@ -44,7 +65,9 @@ class ApiClient {
   }
 
   private async request<T>(endpoint: string, options: RequestInit): Promise<T> {
-    const url = `${this.baseUrl}${endpoint.startsWith("/") ? endpoint : `/${endpoint}`}`;
+    const url = buildApiUrl(endpoint);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
     try {
       const response = await fetch(url, {
@@ -54,18 +77,20 @@ class ApiClient {
           ...(options.headers || {}),
         },
         cache: "no-store",
+        signal: controller.signal,
       });
 
       if (!response.ok) {
-        let errorData: { error?: ApiError; message?: string } | null = null;
+        let errorData: { error?: ApiError; message?: string; detail?: string } | null = null;
         try {
           errorData = await response.json();
         } catch {
-          // Response was not JSON
+          // Response was not JSON.
         }
 
         const message =
           errorData?.error?.message ||
+          errorData?.detail ||
           errorData?.message ||
           `HTTP Error ${response.status}: ${response.statusText}`;
 
@@ -74,13 +99,17 @@ class ApiClient {
 
       return (await response.json()) as T;
     } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        throw new Error("The backend request timed out. Please retry.");
+      }
       if (err instanceof Error) {
         throw err;
       }
-      throw new Error("An unexpected network error occurred while connecting to backend.");
+      throw new Error("An unexpected network error occurred while connecting to the backend.");
+    } finally {
+      clearTimeout(timeout);
     }
   }
 }
 
 export const apiClient = new ApiClient();
-

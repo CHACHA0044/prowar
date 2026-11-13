@@ -8,6 +8,7 @@ from app.models.transaction import Transaction
 from app.models.ground_truth import TransactionGroundTruth
 from app.models.dataset_import import DatasetImport
 from app.models.alert import SecurityAlert
+from app.models.simulator_checkpoint import SimulatorCheckpoint
 
 __all__ = [
     "Base",
@@ -16,4 +17,5 @@ __all__ = [
     "TransactionGroundTruth",
     "DatasetImport",
     "SecurityAlert",
+    "SimulatorCheckpoint",
 ]

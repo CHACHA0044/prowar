@@ -6,7 +6,7 @@ Provides aggregated statistics and import metadata.
 from typing import Optional
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
-from sqlalchemy import select, func, text
+from sqlalchemy import select, func
 from app.database.session import get_db
 from app.models.dataset_import import DatasetImport
 from app.models.transaction import Transaction
@@ -177,14 +177,16 @@ def get_dataset_summary(db: Session = Depends(get_db)) -> APIResponse[DatasetSum
         for r in cat_rows
     ]
 
-    # Daily volume (SQLite strftime / portable date grouping)
+    # Daily volume — func.date() is portable across SQLite and PostgreSQL.
+    day_expr = func.date(Transaction.timestamp)
     daily_rows = db.execute(
-        text(
-            "SELECT substr(timestamp, 1, 10) as day, "
-            "COUNT(*) as cnt, SUM(amount) as vol "
-            "FROM transactions "
-            "GROUP BY day ORDER BY day"
+        select(
+            day_expr.label("day"),
+            func.count().label("cnt"),
+            func.sum(Transaction.amount).label("vol"),
         )
+        .group_by(day_expr)
+        .order_by(day_expr)
     ).all()
     daily_vol = [
         DailyVolumeMetric(date=str(r.day), count=r.cnt, volume=float(r.vol or 0))

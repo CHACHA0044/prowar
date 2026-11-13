@@ -35,3 +35,21 @@ def test_simulator_lifecycle(client):
     # Pause on idle is safe
     r = client.post("/api/v1/simulator/pause")
     assert r.status_code == 200
+
+
+def test_simulator_checkpoint_persists(client):
+    from app.database.session import SessionLocal
+    from app.models.simulator_checkpoint import SimulatorCheckpoint
+
+    client.post("/api/v1/simulator/reset")
+    r = client.patch("/api/v1/simulator/speed", json={"speed": 30.0})
+    assert r.status_code == 200
+
+    db = SessionLocal()
+    try:
+        checkpoint = db.get(SimulatorCheckpoint, 1)
+        assert checkpoint is not None
+        assert checkpoint.speed_multiplier == 30.0
+        assert checkpoint.state in ("IDLE", "PAUSED", "RUNNING", "COMPLETED")
+    finally:
+        db.close()

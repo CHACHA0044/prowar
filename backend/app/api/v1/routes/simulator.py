@@ -1,14 +1,38 @@
 """
 Simulator API — control endpoints and real-time SSE event stream.
+
+Control mutations may be protected with a shared ``CONTROL_API_TOKEN``.
+When configured on Render, send the token in the ``X-Control-Token`` header.
+When unset, the endpoints remain public demo controls (documented limitation).
 """
 
-from fastapi import APIRouter, status
+import secrets
+from typing import Optional
+
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
-from app.services.simulator import simulator_service
-from app.schemas.simulator import SimulatorStatus, SpeedUpdateRequest
+
+from app.core.config import settings
 from app.schemas.common import APIResponse
+from app.schemas.simulator import SimulatorStatus, SpeedUpdateRequest
+from app.services.simulator import simulator_service
 
 router = APIRouter(prefix="/simulator", tags=["Simulator"])
+
+
+async def require_control_token(
+    x_control_token: Optional[str] = Header(default=None, alias="X-Control-Token"),
+) -> None:
+    """Optional shared-token guard for simulator mutations."""
+    if not settings.CONTROL_API_TOKEN:
+        return
+    if not x_control_token or not secrets.compare_digest(
+        x_control_token, settings.CONTROL_API_TOKEN
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid or missing X-Control-Token header.",
+        )
 
 
 @router.get(
@@ -32,6 +56,7 @@ async def get_simulator_status() -> APIResponse[SimulatorStatus]:
     status_code=status.HTTP_200_OK,
     summary="Start Simulator",
     description="Starts or resumes real-time historical transaction replay.",
+    dependencies=[Depends(require_control_token)],
 )
 async def start_simulator() -> APIResponse[SimulatorStatus]:
     st = await simulator_service.start()
@@ -48,6 +73,7 @@ async def start_simulator() -> APIResponse[SimulatorStatus]:
     status_code=status.HTTP_200_OK,
     summary="Pause Simulator",
     description="Pauses the active transaction replay.",
+    dependencies=[Depends(require_control_token)],
 )
 async def pause_simulator() -> APIResponse[SimulatorStatus]:
     st = await simulator_service.pause()
@@ -64,6 +90,7 @@ async def pause_simulator() -> APIResponse[SimulatorStatus]:
     status_code=status.HTTP_200_OK,
     summary="Reset Simulator",
     description="Resets the transaction replay back to the beginning.",
+    dependencies=[Depends(require_control_token)],
 )
 async def reset_simulator() -> APIResponse[SimulatorStatus]:
     st = await simulator_service.reset()
@@ -80,6 +107,7 @@ async def reset_simulator() -> APIResponse[SimulatorStatus]:
     status_code=status.HTTP_200_OK,
     summary="Update Speed Multiplier",
     description="Adjust replay speed multiplier dynamically (0.5x to 100x).",
+    dependencies=[Depends(require_control_token)],
 )
 async def update_speed(payload: SpeedUpdateRequest) -> APIResponse[SimulatorStatus]:
     st = await simulator_service.set_speed(payload.speed)
@@ -95,12 +123,12 @@ async def update_speed(payload: SpeedUpdateRequest) -> APIResponse[SimulatorStat
     summary="Simulator SSE Stream",
     description="Server-Sent Events endpoint streaming transactions and periodic heartbeats.",
 )
-async def simulator_stream():
+async def simulator_stream(request: Request):
     return StreamingResponse(
-        simulator_service.event_stream(),
+        simulator_service.event_stream(request),
         media_type="text/event-stream",
         headers={
-            "Cache-Control": "no-cache",
+            "Cache-Control": "no-cache, no-transform",
             "Connection": "keep-alive",
             "X-Accel-Buffering": "no",
         },
