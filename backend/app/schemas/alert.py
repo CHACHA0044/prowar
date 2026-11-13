@@ -7,7 +7,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional
 from pydantic import BaseModel, Field, ConfigDict
-from backend.app.utils.timestamps import utc_now
+from app.utils.timestamps import utc_now
 
 
 class AlertSeverity(str, Enum):

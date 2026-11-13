@@ -5,7 +5,7 @@ SQLAlchemy ORM Model for Security Alert.
 from datetime import datetime
 from sqlalchemy import String, Numeric, DateTime, Text, Index
 from sqlalchemy.orm import Mapped, mapped_column
-from backend.app.database.base import Base
+from app.database.base import Base
 
 
 class SecurityAlert(Base):

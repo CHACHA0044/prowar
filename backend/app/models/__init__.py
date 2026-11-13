@@ -2,10 +2,18 @@
 Database ORM Models Export.
 """
 
-from backend.app.database.base import Base
-from backend.app.models.account import Account
-from backend.app.models.transaction import Transaction
-from backend.app.models.alert import SecurityAlert
+from app.database.base import Base
+from app.models.account import Account
+from app.models.transaction import Transaction
+from app.models.ground_truth import TransactionGroundTruth
+from app.models.dataset_import import DatasetImport
+from app.models.alert import SecurityAlert
 
-__all__ = ["Base", "Account", "Transaction", "SecurityAlert"]
-
+__all__ = [
+    "Base",
+    "Account",
+    "Transaction",
+    "TransactionGroundTruth",
+    "DatasetImport",
+    "SecurityAlert",
+]

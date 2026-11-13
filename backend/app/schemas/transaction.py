@@ -1,47 +1,26 @@
 """
 Pydantic schemas for Transactions.
-Matches Initial Data Contract and provides validation.
+Matches Initial Data Contract and operational fields without label leakage.
 """
 
 from datetime import datetime
-from enum import Enum
-from typing import Optional
+from typing import Optional, Literal
 from pydantic import BaseModel, Field, ConfigDict
 
 
-class TransactionType(str, Enum):
-    UPI = "UPI"
-    NEFT = "NEFT"
-    RTGS = "RTGS"
-    CARD = "CARD"
-    ATM = "ATM"
-    TRANSFER = "TRANSFER"
-
-
-class TransactionStatus(str, Enum):
-    COMPLETED = "COMPLETED"
-    PENDING = "PENDING"
-    FAILED = "FAILED"
-    BLOCKED = "BLOCKED"
-
-
 class TransactionBase(BaseModel):
-    transaction_id: str = Field(..., description="Unique transaction reference", min_length=4, max_length=64)
-    sender_account_id: str = Field(..., description="Masked or unique identifier of sender", min_length=4, max_length=64)
-    receiver_account_id: str = Field(..., description="Masked or unique identifier of receiver", min_length=4, max_length=64)
-    amount: float = Field(..., description="Monetary transaction amount", gt=0)
-    currency: str = Field("INR", description="Three-letter ISO currency code", min_length=3, max_length=3)
-    transaction_type: TransactionType = Field(..., description="Payment channel or protocol")
-    timestamp: datetime = Field(..., description="UTC timestamp of the transaction")
-    channel: str = Field(..., description="Access channel (mobile_app, web, pos, atm, api)")
-    location: str = Field(..., description="Transaction location (city, state, or geo-hash)")
-    transaction_status: TransactionStatus = Field(default=TransactionStatus.COMPLETED)
-
-    # Future ML Engineering fields (optional in contract):
-    # balance_before: Optional[float] = None
-    # balance_after: Optional[float] = None
-    # device_id: Optional[str] = None
-    # ip_address: Optional[str] = None
+    transaction_id: str = Field(..., description="Unique transaction reference", min_length=1, max_length=64)
+    timestamp: datetime = Field(..., description="Transaction timestamp")
+    sender_account_id: str = Field(..., description="Masked or unique identifier of sender", min_length=1, max_length=64)
+    receiver_account_id: str = Field(..., description="Masked or unique identifier of receiver", min_length=1, max_length=64)
+    amount: float = Field(..., description="Monetary transaction amount in INR", gt=0)
+    currency: str = Field("INR", description="Three-letter ISO currency code")
+    channel: str = Field(..., description="Channel: UPI, CARD, NEFT, IMPS, RTGS, WALLET, ATM, NACH")
+    merchant_category: str = Field("transfer", description="Spending or transfer category")
+    device_id: Optional[str] = Field(None, description="Originating device identifier")
+    location: Optional[str] = Field(None, description="Location or Online")
+    sender_balance_before: Optional[float] = Field(None, description="Sender balance prior to debit")
+    transaction_status: str = Field("COMPLETED", description="Transaction status")
 
 
 class TransactionCreate(TransactionBase):
@@ -53,13 +32,16 @@ class TransactionResponse(TransactionBase):
 
 
 class TransactionFilter(BaseModel):
-    account_id: Optional[str] = None
-    transaction_type: Optional[TransactionType] = None
-    status: Optional[TransactionStatus] = None
-    start_time: Optional[datetime] = None
-    end_time: Optional[datetime] = None
-    min_amount: Optional[float] = None
-    max_amount: Optional[float] = None
+    search: Optional[str] = Field(None, description="Text search on transaction_id, sender, receiver")
+    sender_id: Optional[str] = None
+    receiver_id: Optional[str] = None
+    channel: Optional[str] = None
+    merchant_category: Optional[str] = None
+    min_amount: Optional[float] = Field(None, ge=0)
+    max_amount: Optional[float] = Field(None, ge=0)
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    sort_by: Literal["timestamp", "amount", "transaction_id"] = "timestamp"
+    sort_order: Literal["asc", "desc"] = "desc"
     limit: int = Field(default=50, ge=1, le=500)
     offset: int = Field(default=0, ge=0)
-

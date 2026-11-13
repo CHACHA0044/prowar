@@ -5,10 +5,10 @@ Provides real-time system and database health status.
 
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
-from backend.app.core.config import settings
-from backend.app.database.session import check_db_health, get_db
-from backend.app.schemas.health import SystemHealthResponse, DatabaseHealthResponse, ComponentHealth
-from backend.app.utils.timestamps import utc_now
+from app.core.config import settings
+from app.database.session import check_db_health, get_db
+from app.schemas.health import SystemHealthResponse, DatabaseHealthResponse, ComponentHealth
+from app.utils.timestamps import utc_now
 
 router = APIRouter(prefix="/health", tags=["Health & Diagnostics"])
 

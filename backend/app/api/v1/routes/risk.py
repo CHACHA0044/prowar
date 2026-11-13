@@ -5,7 +5,7 @@ Prepared for Department 6: Weighted ensemble scoring and rule overrides.
 
 from fastapi import APIRouter, status
 from pydantic import BaseModel
-from backend.app.schemas.common import APIResponse
+from app.schemas.common import APIResponse
 
 router = APIRouter(prefix="/risk", tags=["Risk Assessment"])
 

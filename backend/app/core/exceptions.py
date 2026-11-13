@@ -7,8 +7,8 @@ from typing import Any, Dict, Optional
 from fastapi import Request, status
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
-from backend.app.core.logging import logger
-from backend.app.core.config import settings
+from app.core.logging import logger
+from app.core.config import settings
 
 
 class AppException(Exception):

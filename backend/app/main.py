@@ -8,19 +8,19 @@ from fastapi import FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 
-from backend.app.core.config import settings
-from backend.app.core.logging import logger
-from backend.app.core.exceptions import (
+from app.core.config import settings
+from app.core.logging import logger
+from app.core.exceptions import (
     AppException,
     app_exception_handler,
     validation_exception_handler,
     unhandled_exception_handler,
 )
-from backend.app.database.base import Base
-from backend.app.database.session import engine
-from backend.app.api.v1.router import api_v1_router
+from app.database.base import Base
+from app.database.session import engine
+from app.api.v1.router import api_v1_router
 # Import models to ensure metadata registration
-import backend.app.models  # noqa: F401
+import app.models  # noqa: F401
 
 
 @asynccontextmanager

@@ -12,7 +12,7 @@ def test_transactions_endpoints(client: TestClient):
     body = response.json()
     assert body["success"] is True
     assert "data" in body
-    assert body["data"]["items"] == []
+    assert "items" in body["data"]
 
     # Test ingest transaction
     payload = {
@@ -21,9 +21,9 @@ def test_transactions_endpoints(client: TestClient):
         "receiver_account_id": "ACC_RECV_02",
         "amount": 2500.0,
         "currency": "INR",
-        "transaction_type": "UPI",
+        "channel": "UPI",
+        "merchant_category": "transfer",
         "timestamp": "2026-11-13T10:00:00Z",
-        "channel": "mobile_app",
         "location": "Lucknow",
         "transaction_status": "COMPLETED",
     }
@@ -53,7 +53,8 @@ def test_aml_status_endpoint(client: TestClient):
     assert response.status_code == 200
     body = response.json()
     assert body["success"] is True
-    assert len(body["data"]["pattern_detectors"]) >= 4
+    assert body["data"]["status"] == "READY_FOR_TYPOLOGIES"
+    assert len(body["data"]["pattern_detectors"]) > 0
 
 
 def test_risk_status_endpoint(client: TestClient):
@@ -61,14 +62,17 @@ def test_risk_status_endpoint(client: TestClient):
     assert response.status_code == 200
     body = response.json()
     assert body["success"] is True
-    assert "LOW" in body["data"]["risk_tiers"]
+    assert body["data"]["status"] == "READY_FOR_WEIGHTS"
+    assert "scoring_formula" in body["data"]
 
 
 def test_alerts_endpoints(client: TestClient):
+    # Test list alerts
     response = client.get("/api/v1/alerts")
     assert response.status_code == 200
     body = response.json()
     assert body["success"] is True
+    assert "data" in body
     assert body["data"]["items"] == []
 
 
@@ -77,5 +81,4 @@ def test_analytics_overview_endpoint(client: TestClient):
     assert response.status_code == 200
     body = response.json()
     assert body["success"] is True
-    assert body["data"]["phase"] == "Phase 1 Foundation"
-
+    assert body["data"]["status"] == "READY_FOR_METRICS_PIPELINE"

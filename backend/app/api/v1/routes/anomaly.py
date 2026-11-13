@@ -5,7 +5,7 @@ Prepared for Department 4: Unsupervised anomaly detection & account baselines.
 
 from fastapi import APIRouter, status
 from pydantic import BaseModel, Field
-from backend.app.schemas.common import APIResponse
+from app.schemas.common import APIResponse
 
 router = APIRouter(prefix="/anomaly", tags=["Anomaly Monitoring"])
 

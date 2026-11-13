@@ -2,7 +2,7 @@
 Configuration and environment variable tests.
 """
 
-from backend.app.core.config import Settings
+from app.core.config import Settings
 
 
 def test_default_config():

@@ -5,7 +5,7 @@ SQLAlchemy ORM Model for Account.
 from datetime import datetime
 from sqlalchemy import String, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from backend.app.database.base import Base
+from app.database.base import Base
 
 
 class Account(Base):

@@ -5,13 +5,9 @@ Pydantic schemas validation tests.
 from datetime import datetime, timezone
 import pytest
 from pydantic import ValidationError
-from backend.app.schemas.transaction import (
-    TransactionCreate,
-    TransactionType,
-    TransactionStatus,
-)
-from backend.app.schemas.account import AccountCreate, AccountType, AccountStatus
-from backend.app.schemas.alert import AlertCreate, AlertSeverity, AlertStatus
+from app.schemas.transaction import TransactionCreate
+from app.schemas.account import AccountCreate, AccountType, AccountStatus
+from app.schemas.alert import AlertCreate, AlertSeverity, AlertStatus
 
 
 def test_valid_transaction_schema():
@@ -21,16 +17,17 @@ def test_valid_transaction_schema():
         "receiver_account_id": "ACC_RECEIVER_02",
         "amount": 45000.50,
         "currency": "INR",
-        "transaction_type": "UPI",
+        "channel": "UPI",
+        "merchant_category": "transfer",
         "timestamp": datetime.now(timezone.utc),
-        "channel": "mobile_app",
         "location": "Lucknow, UP",
         "transaction_status": "COMPLETED",
     }
     tx = TransactionCreate(**payload)
     assert tx.transaction_id == "TXN_1001"
     assert tx.amount == 45000.50
-    assert tx.transaction_type == TransactionType.UPI
+    assert tx.channel == "UPI"
+    assert tx.merchant_category == "transfer"
 
 
 def test_invalid_transaction_negative_amount():
@@ -40,9 +37,9 @@ def test_invalid_transaction_negative_amount():
         "receiver_account_id": "ACC_02",
         "amount": -50.0,  # Invalid: must be gt=0
         "currency": "INR",
-        "transaction_type": "UPI",
+        "channel": "UPI",
+        "merchant_category": "transfer",
         "timestamp": datetime.now(timezone.utc),
-        "channel": "mobile_app",
         "location": "Mumbai",
     }
     with pytest.raises(ValidationError):
@@ -84,4 +81,3 @@ def test_invalid_alert_score_out_of_bounds():
             risk_score=150.0,  # Invalid: max is 100
             explanation="Invalid score test",
         )
-

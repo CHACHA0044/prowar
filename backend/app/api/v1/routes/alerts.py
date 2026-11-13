@@ -6,9 +6,9 @@ Provides listing, filtering, and status updates for security incidents.
 from typing import List, Optional
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
-from backend.app.database.session import get_db
-from backend.app.schemas.alert import AlertResponse, AlertCreate, AlertUpdateStatus
-from backend.app.schemas.common import APIResponse, PaginatedResponse
+from app.database.session import get_db
+from app.schemas.alert import AlertResponse, AlertCreate, AlertUpdateStatus
+from app.schemas.common import APIResponse, PaginatedResponse
 
 router = APIRouter(prefix="/alerts", tags=["Security Alerts"])
 

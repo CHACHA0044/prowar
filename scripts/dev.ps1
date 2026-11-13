@@ -1,7 +1,7 @@
 Write-Host "Starting Sentinel.AML Platform (Backend + Frontend)..." -ForegroundColor Cyan
 
 # Start Backend
-$backendProcess = Start-Process -FilePath "backend\.venv\Scripts\uvicorn.exe" -ArgumentList "backend.app.main:app", "--reload", "--host", "127.0.0.1", "--port", "8000" -PassThru -NoNewWindow
+$backendProcess = Start-Process -FilePath "backend\.venv\Scripts\uvicorn.exe" -ArgumentList "app.main:app", "--reload", "--host", "127.0.0.1", "--port", "8000" -WorkingDirectory "backend" -PassThru -NoNewWindow
 
 Start-Sleep -Seconds 2
 
@@ -18,4 +18,3 @@ finally {
         Stop-Process -Id $backendProcess.Id -Force
     }
 }
-

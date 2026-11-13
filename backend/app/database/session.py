@@ -6,8 +6,8 @@ Provides connection lifecycle and database health inspection.
 from typing import Generator
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, Session
-from backend.app.core.config import settings
-from backend.app.core.logging import logger
+from app.core.config import settings
+from app.core.logging import logger
 
 # SQLite specific config
 connect_args = {}

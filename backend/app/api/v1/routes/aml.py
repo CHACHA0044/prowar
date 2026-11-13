@@ -5,7 +5,7 @@ Prepared for Department 5: NetworkX graph analysis & laundering pattern detector
 
 from fastapi import APIRouter, status
 from pydantic import BaseModel
-from backend.app.schemas.common import APIResponse
+from app.schemas.common import APIResponse
 
 router = APIRouter(prefix="/aml", tags=["AML Analysis"])
 

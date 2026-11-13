@@ -5,7 +5,7 @@ Prepared for Department 3: Supervised ML classification (LightGBM/XGBoost).
 
 from fastapi import APIRouter, status
 from pydantic import BaseModel, Field
-from backend.app.schemas.common import APIResponse
+from app.schemas.common import APIResponse
 
 router = APIRouter(prefix="/fraud", tags=["Fraud Detection"])
 
