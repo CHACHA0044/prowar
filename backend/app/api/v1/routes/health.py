@@ -1,12 +1,13 @@
 """
 Health check endpoints.
-Provides real-time system and database health status.
+Provides real-time system and dataset storage health status.
 """
 
 from fastapi import APIRouter, HTTPException, status
+
 from app.core.config import settings
-from app.database.session import check_db_health
-from app.schemas.health import SystemHealthResponse, DatabaseHealthResponse, ComponentHealth
+from app.schemas.health import ComponentHealth, DatabaseHealthResponse, SystemHealthResponse
+from app.services.dataset_service import dataset_service
 from app.utils.timestamps import utc_now
 
 router = APIRouter(prefix="/health", tags=["Health & Diagnostics"])
@@ -16,7 +17,7 @@ router = APIRouter(prefix="/health", tags=["Health & Diagnostics"])
     "/live",
     status_code=status.HTTP_200_OK,
     summary="Liveness Probe",
-    description="Cheap process liveness check. Does not touch the database.",
+    description="Cheap process liveness check for container orchestrators.",
 )
 def get_liveness() -> dict:
     return {"status": "alive", "environment": settings.ENVIRONMENT}
@@ -26,18 +27,18 @@ def get_liveness() -> dict:
     "/ready",
     status_code=status.HTTP_200_OK,
     summary="Readiness Probe",
-    description="Returns 200 only when the API can reach its database. Used by Render.",
+    description="Returns 200 only when the static dataset has been loaded and indexed. Used by Render.",
 )
 def get_readiness() -> dict:
-    db_health = check_db_health()
-    if not db_health.get("connected"):
+    if not dataset_service.is_ready:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Database is not reachable.",
+            detail="Static dataset is loading or unavailable.",
         )
     return {
         "status": "ready",
-        "database": db_health.get("dialect"),
+        "dataset": "loaded",
+        "records": dataset_service.total_records,
         "environment": settings.ENVIRONMENT,
     }
 
@@ -47,11 +48,12 @@ def get_readiness() -> dict:
     response_model=SystemHealthResponse,
     status_code=status.HTTP_200_OK,
     summary="System Health Check",
-    description="Returns aggregate health status for the API service and its core subsystems.",
+    description="Returns aggregate health status for the API service and its static data repository.",
 )
 def get_system_health() -> SystemHealthResponse:
-    db_health = check_db_health()
-    db_status = "healthy" if db_health.get("connected") else "unhealthy"
+    is_ready = dataset_service.is_ready
+    ds_status = "healthy" if is_ready else "degraded"
+    records_count = dataset_service.total_records if is_ready else 0
 
     components = {
         "api_gateway": ComponentHealth(
@@ -59,23 +61,21 @@ def get_system_health() -> SystemHealthResponse:
             message="FastAPI service is running and accepting requests.",
         ),
         "database": ComponentHealth(
-            status=db_status,
-            message=db_health.get("message", "Database connection verified."),
-            details={"dialect": db_health.get("dialect")},
+            status=ds_status,
+            message=f"Static CSV data repository active ({records_count:,} records).",
+            details={"storage_type": "static_csv", "records": records_count},
         ),
         "ml_engine": ComponentHealth(
             status="healthy",
-            message="ML subsystem interface initialized (Phase 1 foundation ready).",
+            message="ML subsystem interface initialized (Phase 1/2 foundation active).",
         ),
     }
 
-    overall_status = "healthy" if db_status == "healthy" else "degraded"
-
     return SystemHealthResponse(
-        status=overall_status,
+        status="healthy" if is_ready else "degraded",
         environment=settings.ENVIRONMENT,
         timestamp=utc_now(),
-        version="0.1.0",
+        version="0.2.6",
         components=components,
     )
 
@@ -84,17 +84,17 @@ def get_system_health() -> SystemHealthResponse:
     "/database",
     response_model=DatabaseHealthResponse,
     status_code=status.HTTP_200_OK,
-    summary="Database Health Check",
-    description="Tests direct connectivity to the configured database engine.",
+    summary="Data Storage Health Check",
+    description="Reports the operational status of the static CSV data repository.",
 )
 def get_database_health() -> DatabaseHealthResponse:
-    health = check_db_health()
+    is_ready = dataset_service.is_ready
+    records = dataset_service.total_records if is_ready else 0
     return DatabaseHealthResponse(
-        status=health["status"],
-        connected=health["connected"],
-        dialect=health["dialect"],
-        url_type=health["url_type"],
-        message=health["message"],
+        status="healthy" if is_ready else "degraded",
+        connected=is_ready,
+        dialect="static_csv",
+        url_type="file",
+        message=f"Static CSV repository active ({records:,} transactions loaded in-memory).",
         timestamp=utc_now(),
     )
-

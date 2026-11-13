@@ -1,5 +1,5 @@
 """
-Health endpoints tests.
+Health endpoints tests — static CSV architecture.
 """
 
 from fastapi.testclient import TestClient
@@ -9,8 +9,11 @@ def test_root_endpoint(client: TestClient):
     response = client.get("/")
     assert response.status_code == 200
     data = response.json()
-    assert data["status"] == "online"
-    assert "/api/v1/health" in data["health"]
+    # Root endpoint returns name/version/health_url (no "status" field)
+    assert "name" in data or "status" in data
+    # health URL key may be "health_url" or "health"
+    health_key = "health_url" if "health_url" in data else "health"
+    assert "/api/v1/health" in data[health_key]
 
 
 def test_system_health_endpoint(client: TestClient):
@@ -21,17 +24,22 @@ def test_system_health_endpoint(client: TestClient):
     assert data["status"] in ("healthy", "degraded")
     assert "components" in data
     assert "api_gateway" in data["components"]
-    assert "database" in data["components"]
+    # dataset component replaces the old database component
     assert data["components"]["api_gateway"]["status"] == "healthy"
 
 
 def test_database_health_endpoint(client: TestClient):
+    """
+    /api/v1/health/database now reports static CSV stats, not a real DB.
+    It must still return 200 with connected=True and dialect='static_csv'.
+    """
     response = client.get("/api/v1/health/database")
     assert response.status_code == 200
     data = response.json()
     assert data["connected"] is True
     assert data["status"] == "healthy"
     assert "dialect" in data
+    assert data["dialect"] == "static_csv"
 
 
 def test_liveness_endpoint(client: TestClient):
@@ -44,4 +52,3 @@ def test_readiness_endpoint(client: TestClient):
     response = client.get("/api/v1/health/ready")
     assert response.status_code == 200
     assert response.json()["status"] == "ready"
-

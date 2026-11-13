@@ -1,17 +1,10 @@
-"""Tests for the real-time transaction simulator."""
+"""Tests for the real-time transaction simulator — static CSV architecture."""
+
 import pytest
 from fastapi.testclient import TestClient
-from app.main import app
-from app.services.simulator import simulator_service
 
 
-@pytest.fixture
-def client():
-    with TestClient(app) as c:
-        yield c
-
-
-def test_simulator_status_endpoint(client):
+def test_simulator_status_endpoint(client: TestClient):
     r = client.get("/api/v1/simulator/status")
     assert r.status_code == 200
     body = r.json()
@@ -20,13 +13,13 @@ def test_simulator_status_endpoint(client):
     assert "speed_multiplier" in body["data"]
 
 
-def test_simulator_speed_update(client):
+def test_simulator_speed_update(client: TestClient):
     r = client.patch("/api/v1/simulator/speed", json={"speed": 30.0})
     assert r.status_code == 200
     assert r.json()["data"]["speed_multiplier"] == 30.0
 
 
-def test_simulator_lifecycle(client):
+def test_simulator_lifecycle(client: TestClient):
     # Reset
     r = client.post("/api/v1/simulator/reset")
     assert r.status_code == 200
@@ -37,19 +30,16 @@ def test_simulator_lifecycle(client):
     assert r.status_code == 200
 
 
-def test_simulator_checkpoint_persists(client):
-    from app.database.session import SessionLocal
-    from app.models.simulator_checkpoint import SimulatorCheckpoint
-
+def test_simulator_state_is_in_memory(client: TestClient):
+    """
+    Phase 2.6: Simulator state is fully in-memory (no DB checkpoint).
+    Verify that reset brings state back to IDLE and speed is preserved correctly.
+    """
     client.post("/api/v1/simulator/reset")
-    r = client.patch("/api/v1/simulator/speed", json={"speed": 30.0})
+    r = client.patch("/api/v1/simulator/speed", json={"speed": 15.0})
     assert r.status_code == 200
+    assert r.json()["data"]["speed_multiplier"] == 15.0
 
-    db = SessionLocal()
-    try:
-        checkpoint = db.get(SimulatorCheckpoint, 1)
-        assert checkpoint is not None
-        assert checkpoint.speed_multiplier == 30.0
-        assert checkpoint.state in ("IDLE", "PAUSED", "RUNNING", "COMPLETED")
-    finally:
-        db.close()
+    status = client.get("/api/v1/simulator/status").json()["data"]
+    assert status["speed_multiplier"] == 15.0
+    assert status["state"] == "IDLE"

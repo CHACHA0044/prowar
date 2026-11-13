@@ -1,6 +1,5 @@
-# Render Blueprint for the Sentinel.AML FastAPI backend.
-# Secrets (DATABASE_URL, CONTROL_API_TOKEN) are marked `sync: false` so Render
-# prompts for them in the dashboard and never stores them in git.
+# Render Blueprint for the Sentinel.AML FastAPI backend (Static CSV Architecture).
+# No database service or DATABASE_URL required.
 
 services:
   - type: web
@@ -10,8 +9,6 @@ services:
     region: oregon
     rootDir: backend
     buildCommand: pip install --upgrade pip && pip install -r requirements.txt
-    # Single worker is required: the replay simulator is an in-process singleton
-    # with a database-backed checkpoint. Multi-instance replay needs a queue/worker.
     startCommand: 'uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1 --proxy-headers --forwarded-allow-ips="*"'
     healthCheckPath: /api/v1/health/ready
     autoDeploy: true
@@ -24,23 +21,7 @@ services:
         value: "False"
       - key: LOG_LEVEL
         value: INFO
-      - key: DATABASE_URL
-        sync: false
-      - key: DB_SSL_MODE
-        value: require
-      - key: DB_POOL_SIZE
-        value: "5"
-      - key: DB_MAX_OVERFLOW
-        value: "5"
-      - key: DB_POOL_RECYCLE
-        value: "1800"
-      - key: DB_POOL_TIMEOUT
-        value: "30"
-      - key: DB_CONNECT_TIMEOUT
-        value: "10"
       - key: ALLOWED_ORIGINS
         value: https://prowar-rho.vercel.app
-      - key: AUTO_CREATE_SCHEMA
-        value: "False"
       - key: CONTROL_API_TOKEN
         sync: false

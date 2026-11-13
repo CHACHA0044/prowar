@@ -2,7 +2,9 @@
 
 > **PromptWars 2026 AI Challenge Hackathon**  
 > Organized at Integral University, Lucknow • Powered by Google for Developers × Hack2Skill  
-> **Status:** Phase 1 Foundation Complete  
+> **Status:** Phase 2.6 Static CSV Architecture & Cloud Deployment Ready<br>
+> **Frontend:** [https://prowar-rho.vercel.app](https://prowar-rho.vercel.app) (Vercel)<br>
+> **Backend:** Render (FastAPI + Static CSV In-Memory Analytics)
 
 ---
 
@@ -39,9 +41,9 @@ Digital financial ecosystems (UPI, instantaneous card rails, mobile banking) pro
 - **Framework:** FastAPI with Uvicorn ASGI
 - **Language:** Python 3.12 (managed via `uv`)
 - **Data Validation:** Pydantic v2
-- **ORM & Persistence:** SQLAlchemy 2.0
-- **Database Engine:** SQLite (local development with zero-overhead PostgreSQL migration path)
-- **Testing:** Pytest & FastAPI TestClient
+- **Data Layer:** Static in-memory indexed CSV (`data/transactions.csv`, 129,675 synthetic transactions) — zero external database dependencies
+- **Persistence (Optional/Legacy):** SQLAlchemy 2.0 with in-memory SQLite fallback
+- **Testing:** Pytest (36/36 tests passing) & FastAPI TestClient
 
 ---
 

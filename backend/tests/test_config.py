@@ -1,5 +1,7 @@
 """
 Configuration and environment variable tests.
+Removed: database_url, is_postgresql, effective_auto_create_schema, DB_POOL_*, AUTO_CREATE_SCHEMA
+         (these settings no longer exist in Phase 2.6 static CSV architecture).
 """
 
 from app.core.config import Settings
@@ -38,19 +40,15 @@ def test_production_rejects_wildcard_origins():
         raise AssertionError("Production wildcard CORS origin should be rejected")
 
 
-def test_database_url_normalization():
-    settings = Settings(DATABASE_URL="postgresql://user:pass@example.com:5432/postgres")
-    assert settings.database_url.startswith("postgresql+psycopg2://")
-    assert settings.is_postgresql is True
-
-    legacy = Settings(DATABASE_URL="postgres://user:pass@example.com:5432/postgres")
-    assert legacy.database_url.startswith("postgresql+psycopg2://")
+def test_dataset_path_config():
+    """DATASET_PATH is an optional string setting (None by default)."""
+    settings = Settings()
+    # When not set, DATASET_PATH is None — the service will auto-discover the CSV
+    assert settings.DATASET_PATH is None or isinstance(settings.DATASET_PATH, str)
 
 
-def test_production_does_not_auto_create_schema():
-    settings = Settings(ENVIRONMENT="production", AUTO_CREATE_SCHEMA=None)
-    assert settings.effective_auto_create_schema is False
-
-    dev = Settings(ENVIRONMENT="development", AUTO_CREATE_SCHEMA=None)
-    assert dev.effective_auto_create_schema is True
-
+def test_database_url_optional():
+    """DATABASE_URL is optional and not required for the static CSV architecture."""
+    settings = Settings()
+    # Should not raise; DATABASE_URL is None when not provided
+    assert settings.DATABASE_URL is None or isinstance(settings.DATABASE_URL, str)

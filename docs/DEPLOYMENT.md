@@ -1,300 +1,137 @@
-# Deployment Guide — Sentinel.AML
+# Deployment Guide — Sentinel.AML (Static CSV Architecture)
 
-This document describes the production deployment configuration for the Sentinel.AML platform.
+This document provides the exact deployment settings and operational guide for the Sentinel.AML financial fraud surveillance and AML platform.
 
-## Overview
+## Architecture Summary
 
-- **Frontend**: Vercel (Next.js)
-- **Backend**: Render (FastAPI)
-- **Database**: Supabase PostgreSQL (managed)
-- **Dataset**: 129,675 synthetic transactions (CSV import via CLI)
-
-All Phase 2 functionality is preserved. No ML models (Phase 3) are included.
+- **Frontend**: Vercel (Next.js 15 App Router)
+- **Backend**: Render (FastAPI + Python 3.12)
+- **Data Source**: Embedded static CSV (`data/transactions.csv` — 129,675 synthetic transactions)
+- **Database**: **NOT REQUIRED** (In-memory indexed dataset loaded at startup)
+- **Production Frontend URL**: `https://prowar-rho.vercel.app`
+- **Production Backend URL**: Supplied after Render web service provisioning (e.g. `https://sentinel-aml-api.onrender.com`)
 
 ---
 
-## A. Vercel Configuration
+## A. Render Deployment Configuration (Backend)
 
-### Repository
-- GitHub: `CHACHA0044/prowar`
-- Frontend directory: `frontend/`
+### Service Details
+- **Repository**: `CHACHA0044/prowar`
+- **Environment**: Web Service
+- **Root Directory**: `backend`
+- **Runtime**: `Python 3.12`
+- **Branch**: `main`
 
-### Build Configuration
-- Framework: Next.js (App Router)
-- Build command: `next build`
-- Start command: `next start --port 3000`
-- Environment: Production (Node.js 18+)
-
-### Environment Variables (Vercel Dashboard)
-
-| Variable | Required | Description |
-| `NEXT_PUBLIC_API_URL` | **Yes** | Render backend URL, e.g. `https://sentinel-aml-api.onrender.com` |
-| `NEXT_PUBLIC_SUPABASE_URL` | **No** | Reserved for future authentication (Phase 2.5) |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | **No** | Reserved for future authentication |
-
-**Development**: Set `NEXT_PUBLIC_API_URL=http://127.0.0.1:8000` for local testing.
-
-### Production URL
-- Live: `https://prowar-rho.vercel.app`
-
-### Vercel Analytics & Speed Insights
-- Install: `npm install @vercel/analytics @vercel/speed-insights`
-- Integrate in `frontend/src/app/layout.tsx`:
-  ```tsx
-  import { Analytics } from "@vercel/analytics/next";
-  import { SpeedInsights } from "@vercel/speed-insights/next";
+### Commands
+- **Build Command**:
+  ```bash
+  pip install --upgrade pip && pip install -r requirements.txt
   ```
-- **Note**: Monitoring is only active after enabling in the Vercel dashboard.
+- **Start Command**:
+  ```bash
+  uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1 --proxy-headers --forwarded-allow-ips="*"
+  ```
+- **Health Check Path**:
+  ```text
+  /api/v1/health/ready
+  ```
+
+### Render Environment Variables
+
+| Variable | Required? | Recommended Value | Purpose |
+|---|---|---|---|
+| `PYTHON_VERSION` | **Yes** | `3.12.8` | Enforces Python 3.12 runtime on Render |
+| `ENVIRONMENT` | **Yes** | `production` | Enables production security and disables development logs |
+| `ALLOWED_ORIGINS` | **Yes** | `https://prowar-rho.vercel.app` | Explicit CORS allowlist for Vercel production frontend |
+| `DEBUG` | Optional | `False` | Disables debug mode and verbose tracebacks |
+| `LOG_LEVEL` | Optional | `INFO` | Standard application logging level |
+| `CONTROL_API_TOKEN` | Optional | `<random-secret-token>` | Protects simulator mutation endpoints (`/start`, `/pause`, `/reset`, `/speed`) via `X-Control-Token` header |
+| `DATASET_PATH` | Optional | Unset | Auto-discovered at `../data/transactions.csv` |
+
+*(Note: `DATABASE_URL` is **not** required. The application starts and serves all APIs without any database).*
 
 ---
 
-## B. Render Configuration
+## B. Vercel Deployment Configuration (Frontend)
 
-### Repository
-- GitHub: `CHACHA0044/prowar`
-- Backend directory: `backend/`
+### Project Details
+- **Repository**: `CHACHA0044/prowar`
+- **Root Directory**: `frontend`
+- **Framework Preset**: `Next.js`
+- **Production URL**: `https://prowar-rho.vercel.app`
 
-### Runtime
-- Python 3.12
-- Framework: FastAPI
+### Build & Output Settings
+- **Build Command**: `next build` (default)
+- **Output Directory**: `.next` (default)
+- **Install Command**: `npm install` (default)
 
-### Build Command
-```bash
-pip install --upgrade pip && pip install -r requirements.txt
-```
+### Vercel Environment Variables
 
-### Start Command
-```bash
-uvicorn app.main:app --host 0.0.0.  --port $PORT --workers 1 --proxy-headers --forwarded-allow-ips="*"
-```
+| Variable | Required? | Value | Purpose |
+|---|---|---|---|
+| `NEXT_PUBLIC_API_URL` | **Yes** | `https://<your-render-service>.onrender.com` | Base URL of deployed Render backend API |
 
-**Why single worker**: The simulator is a process‑wide singleton with database‑backed checkpoint. Multi‑instance replay requires external queue/worker (see Troubleshooting).
+*Replace `<your-render-service>.onrender.com` with the actual public URL assigned by Render after your backend web service deploys.*
 
-### Health‑Check Path
-- `/api/v1/health/ready` (Render uses this for readiness probe)
-
-### Environment Variables (Render Dashboard)
-
-| Variable | Required | Value |
-|----------|----------|-------|
-| `DATABASE_URL` | **Yes** | Direct Supabase connection (see below) |
-| `CONTROL_API_TOKEN` | **Optional** | Shared token for simulator control endpoints (X-Control-Token) |
-| `ENVIRONMENT` | **Yes** | `production` |
-| `DEBUG` | **Yes** | `False` |
-| `LOG_LEVEL` | **Yes** | `INFO` |
-| `DB_SSL_MODE` | **Yes** | `require` |
-| `DB_POOL_SIZE` | **Yes** | `5` |
-| `DB_MAX_OVERFLOW` | **Yes**, `5` |
-| `DB_POOL_RECYCLE` | **Yes** | `1800` |
-| `DB_POOL_TIMEOUT` | **Yes** | `30` |
-| `DB_CONNECT_TIMEOUT` | **Yes** | `10` |
-| `ALLOWED_ORIGINS` | **Yes** | `https://prowar-rho.vercel.app` |
-| `AUTO_CREATE_SCHEMA` | **Yes** | `False` (migrations via Alembic) |
-
-### Database URL Options (Supabase)
-
-**Option 1 — Direct connection (IPv6‑capable networks):**
-```
-postgresql+psycopg2://postgres:<password>@db.<project-ref>.supabase.co:5432/postgres?sslmode=require
-```
-
-**Option 2 — Session pooler (recommended for Render IPv4 compatibility):**
-```
-postgresql+psycopg2://postgres.<project-ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres?sslmode=require
-```
-
-**Never commit credentials** — use Render’s `sync: false` env vars.
+### Vercel Speed Insights & Analytics
+- The application already includes `@vercel/analytics` and `@vercel/speed-insights` in `frontend/src/app/layout.tsx`.
+- Enable both features directly from the Vercel Dashboard under **Analytics** and **Speed Insights** tabs with a single click.
 
 ---
 
-## C. Supabase Configuration
+## C. Step-by-Step Deployment Guide
 
-### PostgreSQL Project Setup
-- Create a Supabase PostgreSQL project.
-- Enable **Session Pooler** (recommended for Render).
-- Copy the connection string (direct or pooler).
+### Step 1: Deploy Backend on Render
+1. Log in to [Render Dashboard](https://dashboard.render.com).
+2. Click **New +** > **Web Service**.
+3. Connect your GitHub repository `CHACHA0044/prowar`.
+4. Configure service settings:
+   - **Name**: `sentinel-aml-api` (or preferred name)
+   - **Root Directory**: `backend`
+   - **Runtime**: `Python 3`
+   - **Build Command**: `pip install --upgrade pip && pip install -r requirements.txt`
+   - **Start Command**: `uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1 --proxy-headers --forwarded-allow-ips="*"`
+   - **Health Check Path**: `/api/v1/health/ready`
+5. Add Environment Variables:
+   - `PYTHON_VERSION`: `3.12.8`
+   - `ENVIRONMENT`: `production`
+   - `ALLOWED_ORIGINS`: `https://prowar-rho.vercel.app`
+6. Click **Create Web Service**.
+7. Once deployed, copy your service URL (e.g. `https://sentinel-aml-api.onrender.com`).
 
-### Connection Pooling
-- Render’s IPv4 environment benefits from Supabase session pooler.
-- Use the pooler URL in `DATABASE_URL`.
-
-### Database Migration
-1. **Alembic is already configured** (`backend/alembic/`).
-2. In production (`ENVIRONMENT=production`, `AUTO_CREATE_SCHEMA=False`), run:
-   ```bash
-   alembic upgrade head
-   ```
-3. Verify migration success with `alembic check`.
-
-**Never run destructive migrations in production.**
-
-### Dataset Import
-1. The CSV file (`data/transactions.csv`) is included in the repo.
-2. Use the backend CLI:
-   ```bash
-   cd backend
-   python -m app.cli import-dataset --file ../data/transactions.csv
-   ```
-3. **Options**:
-   - `--force`: Clear existing data before import.
-   - `--chunk-size`: Rows per batch (default 5000).
-   - `--strict`: Fail if any transaction lacks ground‑truth rows.
-   - `--expected-checksum`: Verify CSV integrity.
-
-4. **Verification**:
-   ```bash
-   python -m app.cli verify-dataset
-   ```
-
-5. **Safety**:
-   - Import runs inside a single transaction; incomplete imports roll back.
-   - Duplicate `txn_id`s are skipped.
-   - Ground‑truth labels are preserved and linked via foreign key.
-   - No ground‑truth labels are exposed through operational APIs.
+### Step 2: Configure Frontend on Vercel
+1. Log in to [Vercel Dashboard](https://vercel.com).
+2. Open your project for `prowar` (live at `https://prowar-rho.vercel.app`).
+3. Navigate to **Settings** > **Environment Variables**.
+4. Add or update:
+   - **Key**: `NEXT_PUBLIC_API_URL`
+   - **Value**: `https://<your-render-service>.onrender.com` (from Step 1)
+   - **Target**: Production, Preview, Development
+5. Navigate to **Deployments** and click **Redeploy** on the latest commit.
 
 ---
 
 ## D. Local Development
 
-### Start Backend
-```bash
+### Backend
+```powershell
 cd backend
-pip install -r requirements.txt
-uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+.venv\Scripts\uvicorn.exe app.main:app --reload --host 127.0.0.1 --port 8000
 ```
+Swagger UI: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+Health Check: [http://127.0.0.1:8000/api/v1/health/ready](http://127.0.0.1:8000/api/v1/health/ready)
 
-### Start Frontend
-```bash
+### Frontend
+```powershell
 cd frontend
-npm install
 npm run dev
 ```
-
-### Run Migrations (SQLite)
-```bash
-cd backend
-alembic upgrade head
-```
-
-### Import Dataset (SQLite)
-```bash
-cd backend
-python -m app.cli import-dataset --file ../data/transactions.csv
-```
-
-### Environment Files
-- `backend/.env.example` → copy to `backend/.env` for local dev.
-- `frontend/.env.example` → copy to `frontend/.env.local` for local dev.
+Dashboard: [http://localhost:3000](http://localhost:3000)
 
 ---
 
 ## E. Troubleshooting
 
-### CORS Errors
-- **Symptom**: Browser console shows CORS policy violation.
-- **Fix**: Ensure `ALLOWED_ORIGINS` in Render matches Vercel URL (`https://prowar-rho.vercel.app`).
-- **Development**: Add `http://localhost:3000` to `ALLOWED_ORIGINS`.
-
-### Database Connection Failures
-- **Render**: Verify `DATABASE_URL` uses session pooler and `sslmode=require`.
-- **Supabase**: Ensure IP whitelist includes Render’s CIDR.
-- **Alembic**: Run `alembic check` after credentials change.
-
-### Missing Environment Variables
-- Render/Vercel dashboards show `sync: false` for secrets; populate them in the UI.
-- Never hardcode credentials in source code.
-
-### Render Cold Starts
-- Simulator checkpoint is persisted in the database; replay resumes from last offset.
-- If replay hangs, check `CONTROL_API_TOKEN` and `X-Control-Token` header.
-
-### SSE Disconnections
-- Frontend reconnects automatically (EventSource retry).
-- Simulator heartbeats every 15 seconds; disconnect after 30 seconds of no activity.
-
-### Vercel Build Failures
-- Verify `NEXT_PUBLIC_API_URL` is set in Vercel env vars.
-- Ensure `@vercel/analytics` and `@vercel/speed-insights` are installed.
-
-### Simulator Multi‑Instance Issues
-- Render free plan may restart the service.
-- Simulator progress is checkpointed in `simulator_checkpoint` table; replay resumes.
-- For reliable multi‑instance replay, consider a queue worker (outside scope of Phase  2.5).
-
----
-
-## F. Security Checklist
-
-- **No secrets in Git** – `.gitignore` excludes `.env*` and `.db` files.
-- **CORS**: No wildcard (`*`) in production; explicit origins only.
-- **Database**: SSL required (`sslmode=require`).
-- **Simulator Controls**: Optional token (`CONTROL_API_TOKEN`) for mutations.
-- **Input Validation**: FastAPI Pydantic schemas validate all request bodies.
-- **Logging**: No database credentials or tokens in logs.
-- **Ground‑Truth Labels**: Never exposed via operational APIs.
-
----
-
-## G. React Bits Verification
-
-- `CountUp` and `SpotlightCard` components are **custom implementations** in `frontend/src/components/ui/`.
-- They are **not** official React Bits components.
-- No additional React Bits packages were introduced.
-
----
-
-## H. Final Verification Checklist
-
-### Backend
-- [x] All 39 pytest tests pass.
-- [x] Alembic migrations valid (tested with SQLite).
-- [x] Dataset ingestion CLI works (tested via test_ingestion.py).
-- [x] Simulator checkpoint persistence verified.
-- [x] Health endpoints (`/api/v1/health/live`, `/api/v1/health/ready`) functional.
-- [x] CORS configuration validated.
-
-### Frontend
-- [x] TypeScript check passes (`tsc --noEmit`).
-- [x] Production build succeeds (`next build`).
-- [x] Vercel Analytics & Speed Insights installed and integrated.
-- [x] API client reads `NEXT_PUBLIC_API_URL` correctly.
-
-### Database
-- [x] Migration compatibility verified (Alembic check).
-- [x] Dataset import process verified (idempotent, transactional).
-- [x] Ground‑truth separation preserved.
-
-### Security
-- [x] No accidental secrets in Git.
-- [x] CORS configured correctly.
-- [x] No service‑role key exposed.
-
----
-
-## I. Remaining Manual Steps
-
-1. Deploy backend to Render (populate `DATABASE_URL`, `CONTROL_API_TOKEN`).
-2. Deploy frontend to Vercel (populate `NEXT_PUBLIC_API_URL`).
-3. Enable Vercel Speed Insights and Analytics in the dashboard.
-4. Run dataset import on Supabase PostgreSQL using the CLI.
-5. Verify database health and simulator status after import.
-
----
-
-## J. Known Limitations
-
-- Simulator is a single‑process singleton; Render restarts preserve progress via checkpoint.
-- Free Render plan may sleep; simulator will pause on cold start.
-- No authentication (Supabase Auth) in Phase 2.5; admin endpoints are optionally token‑protected.
-- React Bits components are custom; no external dependency.
-- Alembic migrations are tested with SQLite; PostgreSQL connection requires real credentials.
-
----
-
-## K. Next Phase
-
-Phase 3 (ML models, fraud classification, AML graph algorithms) is **not** included in this deployment preparation.
-
----
-
-*Document generated by deployment preparation script.*
+- **Render Cold Starts**: Render free tier spins down after 15 minutes of inactivity. First request can take ~30-50s to wake up.
+- **CORS Errors**: Confirm `ALLOWED_ORIGINS` on Render contains the exact frontend URL without trailing slashes (`https://prowar-rho.vercel.app`).
+- **SSE Stream Disconnects**: Proxies and free instances terminate idle connections. The simulator sends automatic heartbeats every 15s to keep connections alive, and the frontend hook auto-reconnects with exponential backoff.
